@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PaperBanana</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #fafaf8;
+    color: #1a1a1a;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* ── ヘッダー ── */
+  header {
+    background: #fff;
+    border-bottom: 1px solid #e8e8e4;
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  header h1 {
+    font-size: 20px;
+    font-weight: 700;
+    color: #1a1a1a;
+  }
+  header h1 span { color: #e6a819; }
+  header .subtitle {
+    font-size: 13px;
+    color: #888;
+  }
+  header .spacer { flex: 1; }
+  .help-btn {
+    padding: 6px 14px;
+    border: 1px solid #ddd;
+    background: transparent;
+    border-radius: 6px;
+    font-size: 13px;
+    color: #666;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .help-btn:hover { border-color: #e6a819; color: #e6a819; }
+
+  /* ── レイアウト ── */
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 32px 24px;
+  }
+
+  /* ── モード切り替え ── */
+  .mode-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 24px;
+    background: #f0f0ec;
+    border-radius: 8px;
+    padding: 4px;
+    width: fit-content;
+  }
+  .mode-tab {
+    padding: 8px 20px;
+    border: none;
+    background: transparent;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: #666;
+    transition: all 0.15s;
+  }
+  .mode-tab.active {
+    background: #fff;
+    color: #1a1a1a;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+  }
+
+  /* ── フォーム ── */
+  .form-group { margin-bottom: 20px; }
+  label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 6px;
+  }
+  textarea, input[type="number"] {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 14px;
+    font-family: inherit;
+    background: #fff;
+    transition: border-color 0.15s;
+    resize: vertical;
+  }
+  textarea:focus, input[type="number"]:focus {
+    outline: none;
+    border-color: #e6a819;
+    box-shadow: 0 0 0 3px rgba(230,168,25,0.1);
+  }
+  textarea { min-height: 120px; }
+  #source-context { min-height: 180px; }
+
+  .form-row {
+    display: flex;
+    gap: 16px;
+    align-items: end;
+  }
+  .form-row .form-group { flex: 1; }
+  .form-row .form-group.small { flex: 0 0 120px; }
+
+  .checkbox-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+  .checkbox-row input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: #e6a819;
+  }
+  .checkbox-row label { margin-bottom: 0; font-weight: 400; color: #444; }
+
+  /* ── 生成ボタン ── */
+  .generate-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 32px;
+    background: #e6a819;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .generate-btn:hover { background: #d49a10; }
+  .generate-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+  }
+
+  /* ── 進捗表示 ── */
+  #progress-section {
+    display: none;
+    margin-top: 32px;
+    background: #fff;
+    border: 1px solid #e8e8e4;
+    border-radius: 12px;
+    padding: 24px;
+  }
+  #progress-section h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  .phase-group { margin-bottom: 16px; }
+  .phase-label {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #999;
+    margin-bottom: 8px;
+  }
+
+  .step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    font-size: 14px;
+    color: #888;
+  }
+  .step.active { color: #1a1a1a; }
+  .step.done { color: #4caf50; }
+
+  .step-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* スピナー */
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid #e8e8e4;
+    border-top-color: #e6a819;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .step-elapsed {
+    font-size: 12px;
+    color: #aaa;
+    margin-left: auto;
+  }
+
+  .step-detail {
+    font-size: 12px;
+    color: #999;
+    margin-left: 30px;
+    padding: 2px 0;
+  }
+
+  /* ── 結果表示 ── */
+  #result-section {
+    display: none;
+    margin-top: 32px;
+  }
+  #result-section h2 {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  .result-card {
+    background: #fff;
+    border: 1px solid #e8e8e4;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .result-image-wrap {
+    padding: 24px;
+    display: flex;
+    justify-content: center;
+    background: #fafaf8;
+  }
+  .result-image-wrap img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  }
+  .result-meta {
+    padding: 16px 24px;
+    border-top: 1px solid #e8e8e4;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .result-meta span {
+    font-size: 13px;
+    color: #888;
+  }
+  .download-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 20px;
+    background: #1a1a1a;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+  }
+  .download-btn:hover { background: #333; }
+
+  /* ── イテレーション画像一覧 ── */
+  .iterations-row {
+    display: flex;
+    gap: 12px;
+    padding: 16px 24px;
+    border-top: 1px solid #e8e8e4;
+    overflow-x: auto;
+  }
+  .iter-thumb {
+    flex-shrink: 0;
+    width: 140px;
+    cursor: pointer;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 2px solid transparent;
+    transition: border-color 0.15s;
+  }
+  .iter-thumb:hover { border-color: #e6a819; }
+  .iter-thumb img { width: 100%; display: block; }
+  .iter-thumb .iter-label {
+    font-size: 11px;
+    color: #888;
+    text-align: center;
+    padding: 4px;
+    background: #fff;
+  }
+
+  /* ── エラー ── */
+  .error-banner {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #b91c1c;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 16px;
+    font-size: 14px;
+    display: none;
+  }
+
+  /* ── data入力欄（プロット用） ── */
+  #data-group { display: none; }
+
+  /* ── ヘルプモーダル ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+  }
+  .modal-overlay.active { display: flex; }
+  .modal {
+    background: #fff;
+    border-radius: 16px;
+    max-width: 680px;
+    width: 90vw;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    padding: 32px;
+  }
+  .modal h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: #999;
+    padding: 4px 8px;
+    border-radius: 4px;
+  }
+  .modal-close:hover { background: #f0f0ec; color: #333; }
+  .help-section { margin-bottom: 24px; }
+  .help-section h3 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1a1a1a;
+    margin-bottom: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #eee;
+  }
+  .help-section p, .help-section li {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.7;
+  }
+  .help-section ul {
+    list-style: none;
+    padding: 0;
+  }
+  .help-section li {
+    padding: 4px 0;
+    padding-left: 18px;
+    position: relative;
+  }
+  .help-section li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e6a819;
+  }
+  .help-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-right: 6px;
+  }
+  .badge-phase0 { background: #fef3cd; color: #856404; }
+  .badge-phase1 { background: #d4edda; color: #155724; }
+  .badge-phase2 { background: #cce5ff; color: #004085; }
+  .help-tip {
+    background: #fafaf8;
+    border: 1px solid #e8e8e4;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    color: #666;
+    margin-top: 8px;
+  }
+  .help-kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    background: #f0f0ec;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-family: monospace;
+    font-size: 12px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Paper<span>Banana</span></h1>
+  <span class="subtitle">学術図表を自動生成</span>
+  <span class="spacer"></span>
+  <button class="help-btn" onclick="toggleHelp()">? ヘルプ</button>
+</header>
+
+<!-- ヘルプモーダル -->
+<div class="modal-overlay" id="help-modal" onclick="if(event.target===this)toggleHelp()">
+  <div class="modal">
+    <h2>
+      使い方ガイド
+      <button class="modal-close" onclick="toggleHelp()">&times;</button>
+    </h2>
+
+    <div class="help-section">
+      <h3>PaperBanana とは？</h3>
+      <p>論文のテキストから、学術的な図表を自動生成するツールです。AIが複数のステップで内容を分析・計画し、高品質な図を作成します。</p>
+    </div>
+
+    <div class="help-section">
+      <h3>2つのモード</h3>
+      <ul>
+        <li><strong>ダイアグラム</strong> — モデル構造・パイプライン・フローチャートなど、方法論を説明する図を生成します</li>
+        <li><strong>プロット</strong> — 折れ線グラフ・棒グラフ・散布図など、データを可視化する図を生成します。JSON形式でデータを入力できます</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>入力項目</h3>
+      <ul>
+        <li><strong>論文テキスト</strong> — 図の元になる文章（方法論セクション、実験手法など）を入力します</li>
+        <li><strong>キャプション</strong> — 生成する図の説明（例：「Architecture of our Sparse-Attention Transformer」）</li>
+        <li><strong>データ（プロットのみ）</strong> — JSON形式のデータ。例：<span class="help-kbd">{"x": [1,2,3], "y": [4,5,6]}</span></li>
+        <li><strong>反復回数</strong> — AIが図を改善する回数（1〜10回）。多いほど品質が上がりますが時間がかかります</li>
+        <li><strong>入力を最適化する</strong> — チェックすると、AIがテキストを事前に最適化します（+10秒程度）</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>生成の流れ</h3>
+      <ul>
+        <li><span class="help-badge badge-phase0">Phase 0</span> <strong>入力最適化</strong> — テキストを図の生成に最適な形に変換（オプション）</li>
+        <li><span class="help-badge badge-phase1">Phase 1</span> <strong>計画</strong> — 参考例の取得 → 図の記述（Mermaid等）を生成 → スタイルを調整</li>
+        <li><span class="help-badge badge-phase2">Phase 2</span> <strong>反復改善</strong> — 画像の生成 → AIが品質を評価 → 必要に応じて再生成</li>
+      </ul>
+      <div class="help-tip">
+        反復回数が2以上の場合、Phase 2 は品質が満足されるまで繰り返されます。各イテレーションの画像を比較できます。
+      </div>
+    </div>
+
+    <div class="help-section">
+      <h3>結果の確認</h3>
+      <ul>
+        <li>生成完了後、最終画像が大きく表示されます</li>
+        <li>複数イテレーションがある場合、下のサムネイルをクリックして各段階の画像を確認できます</li>
+        <li><strong>ダウンロード</strong>ボタンで画像を保存できます</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>うまくいくコツ</h3>
+      <ul>
+        <li>論文テキストは<strong>具体的に</strong>書くほど良い図が生成されます</li>
+        <li>キャプションは英語で書くと精度が上がることがあります</li>
+        <li>最初は反復回数 <strong>2〜3回</strong> から試して、品質を見ながら調整しましょう</li>
+        <li>データプロットでは、軸ラベルやタイトルも含めたキャプションを書くと良いです</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>CLI での利用</h3>
+      <p>コマンドラインでも利用できます：</p>
+      <div class="help-tip">
+        <code>paperbanana generate -i paper.txt -c "Model architecture"</code><br>
+        <code>paperbanana web</code> でこの画面を起動
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+  <!-- モード切り替え -->
+  <div class="mode-tabs">
+    <button class="mode-tab active" data-mode="methodology">ダイアグラム</button>
+    <button class="mode-tab" data-mode="statistical_plot">プロット</button>
+  </div>
+
+  <!-- 入力フォーム -->
+  <div class="form-group">
+    <label for="source-context">論文テキスト（方法論セクションなど）</label>
+    <textarea id="source-context" placeholder="生成したい図の元になるテキストを入力してください..."></textarea>
+  </div>
+
+  <div class="form-group">
+    <label for="caption">キャプション（図の説明）</label>
+    <textarea id="caption" style="min-height:60px" placeholder="例: Architecture of our Sparse-Attention Transformer"></textarea>
+  </div>
+
+  <div id="data-group" class="form-group">
+    <label for="raw-data">データ（JSON形式）</label>
+    <textarea id="raw-data" placeholder='{"data": [{"x": 1, "y": 2}, ...]}'></textarea>
+  </div>
+
+  <div class="form-row">
+    <div class="form-group small">
+      <label for="iterations">反復回数</label>
+      <input type="number" id="iterations" value="2" min="1" max="10">
+    </div>
+    <div class="form-group">
+      <div class="checkbox-row" style="margin-top:20px">
+        <input type="checkbox" id="optimize">
+        <label for="optimize">入力を最適化する（より高品質、+10秒程度）</label>
+      </div>
+    </div>
+  </div>
+
+  <button class="generate-btn" id="generate-btn" onclick="startGeneration()">
+    生成する
+  </button>
+
+  <div class="error-banner" id="error-banner"></div>
+
+  <!-- 進捗 -->
+  <div id="progress-section">
+    <h2>生成中...</h2>
+    <div id="progress-steps"></div>
+  </div>
+
+  <!-- 結果 -->
+  <div id="result-section">
+    <h2>生成結果</h2>
+    <div class="result-card">
+      <div class="result-image-wrap">
+        <img id="result-image" src="" alt="生成結果">
+      </div>
+      <div class="iterations-row" id="iterations-row"></div>
+      <div class="result-meta">
+        <span id="result-info"></span>
+        <a id="download-link" class="download-btn" download>ダウンロード</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let currentMode = 'methodology';
+let ws = null;
+
+// ヘルプモーダル
+function toggleHelp() {
+  document.getElementById('help-modal').classList.toggle('active');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('help-modal').classList.remove('active');
+  }
+});
+
+// モード切り替え
+document.querySelectorAll('.mode-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    currentMode = tab.dataset.mode;
+    document.getElementById('data-group').style.display =
+      currentMode === 'statistical_plot' ? 'block' : 'none';
+  });
+});
+
+// 進捗ステップの定義
+const STEPS = {
+  phase0: [
+    { key: 'optimizer', label: '入力最適化' },
+  ],
+  phase1: [
+    { key: 'retriever', label: '参考例を取得' },
+    { key: 'planner', label: '記述を生成' },
+    { key: 'stylist', label: 'スタイルを最適化' },
+  ],
+  phase2: [
+    { key: 'visualizer', label: '画像を生成' },
+    { key: 'critic', label: '品質を評価' },
+  ],
+};
+
+const PHASE_LABELS = {
+  phase0: 'Phase 0 — 入力最適化',
+  phase1: 'Phase 1 — 計画',
+  phase2: 'Phase 2 — 反復改善',
+};
+
+function buildProgressUI(showOptimize) {
+  const container = document.getElementById('progress-steps');
+  container.innerHTML = '';
+
+  const phases = showOptimize
+    ? ['phase0', 'phase1', 'phase2']
+    : ['phase1', 'phase2'];
+
+  phases.forEach(phase => {
+    const group = document.createElement('div');
+    group.className = 'phase-group';
+    group.innerHTML = `<div class="phase-label">${PHASE_LABELS[phase]}</div>`;
+
+    STEPS[phase].forEach(step => {
+      const el = document.createElement('div');
+      el.className = 'step';
+      el.id = `step-${phase}-${step.key}`;
+      el.innerHTML = `
+        <div class="step-icon">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6" stroke="#ddd" stroke-width="1.5"/>
+          </svg>
+        </div>
+        <span>${step.label}</span>
+        <span class="step-elapsed"></span>
+      `;
+      group.appendChild(el);
+    });
+
+    container.appendChild(group);
+  });
+}
+
+function updateStep(phase, step, status, data = {}) {
+  const el = document.getElementById(`step-${phase}-${step}`);
+  if (!el) return;
+
+  const iconEl = el.querySelector('.step-icon');
+  const elapsedEl = el.querySelector('.step-elapsed');
+
+  if (status === 'started') {
+    el.className = 'step active';
+    iconEl.innerHTML = '<div class="spinner"></div>';
+  } else if (status === 'completed') {
+    el.className = 'step done';
+    iconEl.innerHTML = `
+      <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+        <circle cx="8" cy="8" r="7" fill="#4caf50"/>
+        <path d="M5 8l2 2 4-4" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    `;
+    if (data.elapsed) {
+      elapsedEl.textContent = `${data.elapsed}s`;
+    }
+    if (data.detail) {
+      elapsedEl.textContent += ` (${data.detail})`;
+    }
+  }
+
+  // Phase2: criticの結果を追加表示
+  if (phase === 'phase2' && step === 'critic' && status === 'completed' && data.summary) {
+    // 既存のdetailを削除
+    const existingDetail = el.nextElementSibling;
+    if (existingDetail && existingDetail.classList.contains('step-detail')) {
+      existingDetail.remove();
+    }
+    const detail = document.createElement('div');
+    detail.className = 'step-detail';
+    if (data.needs_revision) {
+      detail.textContent = '↻ ' + data.summary;
+      detail.style.color = '#e6a819';
+    } else {
+      detail.textContent = '✓ 問題なし';
+      detail.style.color = '#4caf50';
+    }
+    el.parentElement.appendChild(detail);
+  }
+
+  // Phase2のイテレーション表示を更新
+  if (phase === 'phase2' && step === 'visualizer' && status === 'started' && data.iteration) {
+    const phaseLabel = el.closest('.phase-group').querySelector('.phase-label');
+    phaseLabel.textContent = `Phase 2 — 反復改善（イテレーション ${data.iteration}）`;
+
+    // ステップを「待機」にリセット
+    STEPS.phase2.forEach(s => {
+      const stepEl = document.getElementById(`step-phase2-${s.key}`);
+      if (stepEl) {
+        stepEl.className = 'step';
+        stepEl.querySelector('.step-icon').innerHTML = `
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="8" r="6" stroke="#ddd" stroke-width="1.5"/>
+          </svg>
+        `;
+        stepEl.querySelector('.step-elapsed').textContent = '';
+      }
+    });
+    // 自分自身をactiveに
+    el.className = 'step active';
+    iconEl.innerHTML = '<div class="spinner"></div>';
+  }
+}
+
+function showResult(data) {
+  document.getElementById('progress-section').querySelector('h2').textContent = '生成完了';
+
+  const section = document.getElementById('result-section');
+  section.style.display = 'block';
+
+  const img = document.getElementById('result-image');
+  img.src = data.image_url + '?t=' + Date.now();
+
+  const link = document.getElementById('download-link');
+  link.href = data.image_url;
+
+  document.getElementById('result-info').textContent =
+    `Run: ${data.run_id} · ${data.iterations.length} イテレーション · ${data.total_seconds}秒`;
+
+  // イテレーション画像
+  const row = document.getElementById('iterations-row');
+  row.innerHTML = '';
+  if (data.iterations.length > 1) {
+    data.iterations.forEach(iter => {
+      const thumb = document.createElement('div');
+      thumb.className = 'iter-thumb';
+      thumb.innerHTML = `
+        <img src="${iter.image_url}?t=${Date.now()}" alt="Iteration ${iter.iteration}">
+        <div class="iter-label">
+          #${iter.iteration}
+          ${iter.needs_revision ? '↻' : '✓'}
+        </div>
+      `;
+      thumb.addEventListener('click', () => {
+        img.src = iter.image_url + '?t=' + Date.now();
+        link.href = iter.image_url;
+      });
+      row.appendChild(thumb);
+    });
+  } else {
+    row.style.display = 'none';
+  }
+
+  section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function showError(message) {
+  const banner = document.getElementById('error-banner');
+  banner.textContent = message;
+  banner.style.display = 'block';
+}
+
+function startGeneration() {
+  const sourceContext = document.getElementById('source-context').value.trim();
+  const caption = document.getElementById('caption').value.trim();
+
+  if (!sourceContext) {
+    showError('論文テキストを入力してください');
+    return;
+  }
+  if (!caption) {
+    showError('キャプションを入力してください');
+    return;
+  }
+
+  // UIリセット
+  const btn = document.getElementById('generate-btn');
+  btn.disabled = true;
+  btn.textContent = '生成中...';
+  document.getElementById('error-banner').style.display = 'none';
+  document.getElementById('result-section').style.display = 'none';
+
+  const optimize = document.getElementById('optimize').checked;
+  const iterations = parseInt(document.getElementById('iterations').value) || 2;
+
+  buildProgressUI(optimize);
+  document.getElementById('progress-section').style.display = 'block';
+  document.getElementById('progress-section').querySelector('h2').textContent = '生成中...';
+
+  // WebSocket接続
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}/ws/generate`);
+
+  ws.onopen = () => {
+    const params = {
+      source_context: sourceContext,
+      caption: caption,
+      diagram_type: currentMode,
+      iterations: iterations,
+      optimize: optimize,
+    };
+
+    if (currentMode === 'statistical_plot') {
+      const rawData = document.getElementById('raw-data').value.trim();
+      if (rawData) {
+        try {
+          params.raw_data = JSON.parse(rawData);
+        } catch (e) {
+          showError('データのJSON形式が不正です: ' + e.message);
+          ws.close();
+          btn.disabled = false;
+          btn.textContent = '生成する';
+          return;
+        }
+      }
+    }
+
+    ws.send(JSON.stringify(params));
+  };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+    switch (msg.type) {
+      case 'progress':
+        updateStep(msg.phase, msg.step, msg.status, msg);
+        break;
+      case 'complete':
+        showResult(msg);
+        btn.disabled = false;
+        btn.textContent = '生成する';
+        break;
+      case 'error':
+        showError(msg.message);
+        btn.disabled = false;
+        btn.textContent = '生成する';
+        break;
+      case 'status':
+        break;
+    }
+  };
+
+  ws.onerror = () => {
+    showError('サーバーとの接続に失敗しました');
+    btn.disabled = false;
+    btn.textContent = '生成する';
+  };
+
+  ws.onclose = () => {
+    btn.disabled = false;
+    if (btn.textContent === '生成中...') {
+      btn.textContent = '生成する';
+    }
+  };
+}
+</script>
+
+</body>
+</html>

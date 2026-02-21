@@ -455,6 +455,36 @@ def setup():
 
 
 @app.command()
+def web(
+    host: str = typer.Option("127.0.0.1", "--host", help="Host to bind"),
+    port: int = typer.Option(8080, "--port", "-p", help="Port to listen on"),
+):
+    """Web UI を起動してブラウザから図表を生成する。"""
+    try:
+        import uvicorn
+    except ImportError:
+        console.print(
+            "[red]Error: Web dependencies not installed.[/red]\n"
+            "Run: [bold]pip install paperbanana\\[web][/bold]"
+        )
+        raise typer.Exit(1)
+
+    import webbrowser
+
+    console.print(
+        Panel.fit(
+            f"[bold]PaperBanana Web UI[/bold]\n\n"
+            f"http://{host}:{port} でアクセスできます\n"
+            f"終了するには Ctrl+C を押してください",
+            border_style="yellow",
+        )
+    )
+
+    webbrowser.open(f"http://{host}:{port}")
+    uvicorn.run("paperbanana.web.app:app", host=host, port=port)
+
+
+@app.command()
 def evaluate(
     generated: str = typer.Option(..., "--generated", "-g", help="Path to generated image"),
     context: str = typer.Option(..., "--context", help="Path to source context text file"),

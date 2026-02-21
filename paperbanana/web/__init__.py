@@ -1,0 +1,1 @@
+"""PaperBanana Web UI package."""
